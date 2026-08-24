@@ -21,7 +21,6 @@ def search_vessel():
 
   try:
     with sync_playwright() as p:
-      # 啟動無頭瀏覽器
       browser = p.chromium.launch(
           headless=True,
           args=['--no-sandbox', '--disable-setuid-sandbox'],
@@ -34,21 +33,25 @@ def search_vessel():
           timeout=60000,
       )
 
-      # 1. 定位並輸入船名（需根據萬海實際頁面的 input 屬性調整）
-      # 假設輸入框有特定 placeholder 或 selector
-      page.wait_for_selector(
-          "input[type='text'], input"
-      )  # 等待輸入框載入
-      # 假設我們要填入輸入框（實際可依 F12 檢視該 input 的 name 或 id 進行微調）
+      # 1. 等待頁面上的輸入框載入（根據萬海實際的 input 屬性調整）
+      page.wait_for_selector('input', timeout=10000)
+
+      # 2. 填入船名（若有多個輸入框，需指定對應的 name 或 id）
+      # 這裡嘗試填入第一個文字輸入框
       page.fill("input[type='text']", vessel_name)
 
-      # 2. 模擬點擊查詢按鈕
-      # page.click("button:has-text('查詢'), input[type='submit']")
+      # 3. 模擬點擊查詢按鈕（可依據按鈕上的文字或 class 調整）
+      # 例如點擊包含「查詢」字樣的按鈕
+      try:
+        page.click("button:has-text('查詢'), input[type='submit'], .search-btn")
+      except:
+        # 如果找不到按鈕，嘗試直接對輸入框按下 Enter 鍵
+        page.press("input[type='text']", 'Enter')
 
-      # 3. 等待查詢結果的表格動態渲染出來
-      page.wait_for_timeout(4000)  # 給予時間等待非同步表格載入
+      # 4. 給予足夠時間等待表格非同步載入
+      page.wait_for_timeout(5000)
 
-      # 4. 抓取表格所有列
+      # 5. 抓取表格資料
       rows = page.locator('table tr').all()
       for row in rows:
         cols = row.locator('td').all_inner_texts()
@@ -73,23 +76,19 @@ def search_vessel():
       return jsonify({
           'status': 'error',
           'message': (
-              '未能即時抓取到資料，可能需要精準對應萬海的查詢按鈕與輸入框'
-              ' Selector。'
+              '抓取不到資料：可能是萬海頁面的輸入框或查詢按鈕選擇器需要進一步對應。'
           ),
       })
 
     return jsonify({
         'status': 'success',
         'vessel': vessel_name,
-        'route': 'Real-time Live Scraped',
+        'route': 'Live Scraped',
         'schedule': schedule_rows,
     })
 
   except Exception as e:
-    return jsonify({
-        'status': 'error',
-        'message': f'即時爬蟲執行失敗: {str(e)}',
-    })
+    return jsonify({'status': 'error', 'message': f'爬蟲執行失敗: {str(e)}'})
 
 
 if __name__ == '__main__':
