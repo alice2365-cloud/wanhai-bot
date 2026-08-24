@@ -5,8 +5,8 @@ app = Flask(__name__)
 
 # 1. 當打開網頁根目錄時，顯示 HTML 介面
 @app.route('/')
-index():
-  return render_template('index.html')
+def index():
+    return render_template('index.html')
 
 
 # 2. 接收網頁傳來的查詢請求
