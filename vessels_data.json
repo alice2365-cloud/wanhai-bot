@@ -1,0 +1,30 @@
+{
+  "ATHENS BRIDGE": [
+    {
+      "status_type": "ACT",
+      "port": "KAOHSIUNG",
+      "arr_voyage": "N234",
+      "arr_date": "2026/08/20",
+      "arr_time": "08:00",
+      "berth_date": "2026/08/20",
+      "berth_time": "10:00",
+      "dep_voyage": "N234",
+      "dep_date": "2026/08/21",
+      "dep_time": "14:00",
+      "status": "COMPLETED"
+    },
+    {
+      "status_type": "EST",
+      "port": "TOKYO",
+      "arr_voyage": "N235",
+      "arr_date": "2026/08/28",
+      "arr_time": "12:00",
+      "berth_date": "2026/08/28",
+      "berth_time": "15:00",
+      "dep_voyage": "N235",
+      "dep_date": "2026/08/29",
+      "dep_time": "02:00",
+      "status": "SCHEDULED"
+    }
+  ]
+}
