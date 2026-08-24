@@ -1,6 +1,5 @@
-from bs4 import BeautifulSoup
 from flask import Flask, jsonify, render_template, request
-import requests
+from playwright.sync_api import sync_playwright
 
 app = Flask(__name__)
 
@@ -21,40 +20,28 @@ def search_vessel():
   schedule_rows = []
 
   try:
-    # 萬海船期查詢的主網址或對應的頁面端點
-    # 實務上我們可直接帶入查詢參數或目標 xhtml 頁面
-    target_url = 'https://tw.wanhai.com/views/skd/SkdByVsl.xhtml'
+    with sync_playwright() as p:
+      # 啟動無頭瀏覽器
+      browser = p.chromium.launch(
+          headless=True,
+          args=['--no-sandbox', '--disable-setuid-sandbox'],
+      )
+      page = browser.new_page()
 
-    headers = {
-        'User-Agent': (
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) '
-            'Chrome/122.0.0.0 Safari/537.36'
-        ),
-        'Referer': 'https://tw.wanhai.com/views/Main.xhtml',
-    }
+      # 前往萬海船期查詢頁面
+      page.goto(
+          'https://tw.wanhai.com/views/quick/skd_by_vessel.xhtml',
+          timeout=60000,
+      )
 
-    # 如果需要帶入查詢參數（例如船名代號或表單欄位）
-    params = {
-        'vesselName': vessel_name
-        # 若有特定的 file_num 也可在此動態帶入
-    }
+      # 嘗試等待頁面載入完成，並擷取動態產生的表格列
+      # （若萬海頁面結構有特定的 table 標籤，可在此處調整 selector）
+      page.wait_for_timeout(3000)  # 給予 3 秒讓 JS 渲染
 
-    # 發送 GET 請求取得網頁內容
-    response = requests.get(target_url, params=params, headers=headers, timeout=15)
-    response.encoding = 'utf-8'
-
-    if response.status_code == 200:
-      # 使用 BeautifulSoup 解析 HTML 結構
-      soup = BeautifulSoup(response.text, 'html.parser')
-
-      # 尋找船期表格中的每一列（依據萬海頁面實際的 table 與 tr 結構）
-      # 這邊會抓取頁面上所有符合的表格列
-      rows = soup.find_all('tr')
-
+      # 抓取頁面中所有的表格列
+      rows = page.locator('table tr').all()
       for row in rows:
-        cols = [td.get_text(strip=True) for td in row.find_all('td')]
-        # 篩選出包含有效停靠港資料的列（根據欄位數量過濾）
+        cols = row.locator('td').all_inner_texts()
         if len(cols) >= 10:
           schedule_rows.append({
               'status_type': cols[0],
@@ -70,19 +57,17 @@ def search_vessel():
               'status': cols[10] if len(cols) > 10 else 'ESTIMATED',
           })
 
-    # 如果因為萬海有些頁面是透過 JS 動態載入導致 requests 抓不到直屬 tr，
-    # 我們可以進一步對應其實際的 CSS Selector 進行調整。
-    # 若此時 schedule_rows 仍為空，會回傳提示讓前端確認。
+      browser.close()
 
     return jsonify({
         'status': 'success',
         'vessel': vessel_name,
-        'route': 'Live Scraped via SkdByVsl',
+        'route': 'Playwright Dynamic Render',
         'schedule': schedule_rows,
     })
 
   except Exception as e:
-    return jsonify({'status': 'error', 'message': f'爬蟲執行失敗: {str(e)}'})
+    return jsonify({'status': 'error', 'message': f'爬蟲執行發生錯誤: {str(e)}'})
 
 
 if __name__ == '__main__':
