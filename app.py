@@ -1,4 +1,6 @@
+from bs4 import BeautifulSoup
 from flask import Flask, jsonify, render_template, request
+import requests
 
 app = Flask(__name__)
 
@@ -16,381 +18,63 @@ def search_vessel():
   if not vessel_name:
     return jsonify({'status': 'error', 'message': '請輸入船名'})
 
-  # 涵蓋該船完整「全量」歷史、當前與未來排班資料庫（近 30 筆詳細停靠紀錄）
-  complete_massive_schedule = [
-      {
-          "status_type": "",
-          "port": "OSAKA",
-          "arr_voyage": "N185",
-          "arr_date": "2026/06/10",
-          "arr_time": "08:00",
-          "berth_date": "2026/06/10",
-          "berth_time": "09:00",
-          "dep_voyage": "S186",
-          "dep_date": "2026/06/10",
-          "dep_time": "20:00",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "KOBE",
-          "arr_voyage": "N185",
-          "arr_date": "2026/06/11",
-          "arr_time": "06:00",
-          "berth_date": "2026/06/11",
-          "berth_time": "07:00",
-          "dep_voyage": "S186",
-          "dep_date": "2026/06/11",
-          "dep_time": "22:00",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "TOKYO",
-          "arr_voyage": "N185",
-          "arr_date": "2026/06/13",
-          "arr_time": "14:00",
-          "berth_date": "2026/06/13",
-          "berth_time": "15:00",
-          "dep_voyage": "S186",
-          "dep_date": "2026/06/14",
-          "dep_time": "04:00",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "YOKOHAMA",
-          "arr_voyage": "N185",
-          "arr_date": "2026/06/14",
-          "arr_time": "07:20",
-          "berth_date": "2026/06/14",
-          "berth_time": "07:20",
-          "dep_voyage": "S186",
-          "dep_date": "2026/06/14",
-          "dep_time": "18:50",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "KAOHSIUNG",
-          "arr_voyage": "S186",
-          "arr_date": "2026/06/19",
-          "arr_time": "10:00",
-          "berth_date": "2026/06/19",
-          "berth_time": "11:00",
-          "dep_voyage": "S186",
-          "dep_date": "2026/06/20",
-          "dep_time": "02:00",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "HONG KONG",
-          "arr_voyage": "S186",
-          "arr_date": "2026/06/22",
-          "arr_time": "00:00",
-          "berth_date": "2026/06/22",
-          "berth_time": "08:00",
-          "dep_voyage": "S186",
-          "dep_date": "2026/06/23",
-          "dep_time": "02:10",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "SINGAPORE",
-          "arr_voyage": "S186",
-          "arr_date": "2026/07/02",
-          "arr_time": "05:40",
-          "berth_date": "2026/07/02",
-          "berth_time": "07:40",
-          "dep_voyage": "N186",
-          "dep_date": "2026/07/04",
-          "dep_time": "03:25",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "OSAKA",
-          "arr_voyage": "N186",
-          "arr_date": "2026/07/20",
-          "arr_time": "08:00",
-          "berth_date": "2026/07/20",
-          "berth_time": "09:00",
-          "dep_voyage": "S187",
-          "dep_date": "2026/07/20",
-          "dep_time": "20:00",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "KOBE",
-          "arr_voyage": "N186",
-          "arr_date": "2026/07/21",
-          "arr_time": "06:00",
-          "berth_date": "2026/07/21",
-          "berth_time": "07:00",
-          "dep_voyage": "S187",
-          "dep_date": "2026/07/21",
-          "dep_time": "22:00",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "TOKYO",
-          "arr_voyage": "N186",
-          "arr_date": "2026/07/23",
-          "arr_time": "14:00",
-          "berth_date": "2026/07/23",
-          "berth_time": "15:00",
-          "dep_voyage": "S187",
-          "dep_date": "2026/07/24",
-          "dep_time": "04:00",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "YOKOHAMA",
-          "arr_voyage": "N186",
-          "arr_date": "2026/07/24",
-          "arr_time": "07:20",
-          "berth_date": "2026/07/24",
-          "berth_time": "07:20",
-          "dep_voyage": "S187",
-          "dep_date": "2026/07/24",
-          "dep_time": "18:50",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "NAGOYA",
-          "arr_voyage": "N186",
-          "arr_date": "2026/07/25",
-          "arr_time": "11:00",
-          "berth_date": "2026/07/25",
-          "berth_time": "11:30",
-          "dep_voyage": "S187",
-          "dep_date": "2026/07/25",
-          "dep_time": "23:25",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "KAOHSIUNG",
-          "arr_voyage": "S187",
-          "arr_date": "2026/07/29",
-          "arr_time": "10:00",
-          "berth_date": "2026/07/29",
-          "berth_time": "11:00",
-          "dep_voyage": "S187",
-          "dep_date": "2026/07/30",
-          "dep_time": "02:00",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "HONG KONG",
-          "arr_voyage": "S187",
-          "arr_date": "2026/08/01",
-          "arr_time": "00:00",
-          "berth_date": "2026/08/01",
-          "berth_time": "08:00",
-          "dep_voyage": "S187",
-          "dep_date": "2026/08/02",
-          "dep_time": "02:10",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "PORT KLANG WEST PORT",
-          "arr_voyage": "S187",
-          "arr_date": "2026/08/08",
-          "arr_time": "04:30",
-          "berth_date": "2026/08/08",
-          "berth_time": "06:10",
-          "dep_voyage": "N187",
-          "dep_date": "2026/08/09",
-          "dep_time": "15:45",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "",
-          "port": "SINGAPORE",
-          "arr_voyage": "S187",
-          "arr_date": "2026/08/13",
-          "arr_time": "05:40",
-          "berth_date": "2026/08/13",
-          "berth_time": "07:40",
-          "dep_voyage": "N187",
-          "dep_date": "2026/08/15",
-          "dep_time": "03:25",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "目前狀態",
-          "port": "TOKYO",
-          "arr_voyage": "N187",
-          "arr_date": "2026/08/22",
-          "arr_time": "21:50",
-          "berth_date": "2026/08/22",
-          "berth_time": "22:48",
-          "dep_voyage": "S188",
-          "dep_date": "2026/08/23",
-          "dep_time": "19:16",
-          "status": "ACTUAL",
-      },
-      {
-          "status_type": "下個狀態",
-          "port": "YOKOHAMA",
-          "arr_voyage": "N187",
-          "arr_date": "2026/08/23",
-          "arr_time": "22:00",
-          "berth_date": "2026/08/23",
-          "berth_time": "22:00",
-          "dep_voyage": "S188",
-          "dep_date": "2026/08/24",
-          "dep_time": "08:00",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "NAGOYA",
-          "arr_voyage": "N187",
-          "arr_date": "2026/08/25",
-          "arr_time": "11:00",
-          "berth_date": "2026/08/25",
-          "berth_time": "11:30",
-          "dep_voyage": "S188",
-          "dep_date": "2026/08/25",
-          "dep_time": "23:25",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "KOBE",
-          "arr_voyage": "N187",
-          "arr_date": "2026/08/27",
-          "arr_time": "22:52",
-          "berth_date": "2026/08/27",
-          "berth_time": "23:00",
-          "dep_voyage": "S188",
-          "dep_date": "2026/08/28",
-          "dep_time": "18:19",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "KEELUNG",
-          "arr_voyage": "N187",
-          "arr_date": "2026/09/01",
-          "arr_time": "08:00",
-          "berth_date": "2026/09/01",
-          "berth_time": "09:00",
-          "dep_voyage": "S188",
-          "dep_date": "2026/09/02",
-          "dep_time": "18:00",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "KAOHSIUNG",
-          "arr_voyage": "N187",
-          "arr_date": "2026/09/03",
-          "arr_time": "10:00",
-          "berth_date": "2026/09/03",
-          "berth_time": "11:00",
-          "dep_voyage": "S188",
-          "dep_date": "2026/09/04",
-          "dep_time": "22:00",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "HONG KONG",
-          "arr_voyage": "S188",
-          "arr_date": "2026/09/07",
-          "arr_time": "00:00",
-          "berth_date": "2026/09/07",
-          "berth_time": "08:00",
-          "dep_voyage": "S188",
-          "dep_date": "2026/09/08",
-          "dep_time": "02:10",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "PORT KLANG WEST PORT",
-          "arr_voyage": "S188",
-          "arr_date": "2026/09/14",
-          "arr_time": "04:30",
-          "berth_date": "2026/09/14",
-          "berth_time": "06:10",
-          "dep_voyage": "N188",
-          "dep_date": "2026/09/15",
-          "dep_time": "15:45",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "SINGAPORE",
-          "arr_voyage": "S188",
-          "arr_date": "2026/09/18",
-          "arr_time": "05:40",
-          "berth_date": "2026/09/18",
-          "berth_time": "07:40",
-          "dep_voyage": "N188",
-          "dep_date": "2026/09/20",
-          "dep_time": "03:25",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "OSAKA",
-          "arr_voyage": "N188",
-          "arr_date": "2026/10/05",
-          "arr_time": "08:00",
-          "berth_date": "2026/10/05",
-          "berth_time": "09:00",
-          "dep_voyage": "S189",
-          "dep_date": "2026/10/05",
-          "dep_time": "20:00",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "KOBE",
-          "arr_voyage": "N188",
-          "arr_date": "2026/10/06",
-          "arr_time": "06:00",
-          "berth_date": "2026/10/06",
-          "berth_time": "07:00",
-          "dep_voyage": "S189",
-          "dep_date": "2026/10/06",
-          "dep_time": "22:00",
-          "status": "ESTIMATED",
-      },
-      {
-          "status_type": "",
-          "port": "TOKYO",
-          "arr_voyage": "N188",
-          "arr_date": "2026/10/08",
-          "arr_time": "14:00",
-          "berth_date": "2026/10/08",
-          "berth_time": "15:00",
-          "dep_voyage": "S189",
-          "dep_date": "2026/10/09",
-          "dep_time": "04:00",
-          "status": "ESTIMATED",
-      },
-  ]
+  try:
+    # 1. 設定萬海船期查詢的目標網址或 API 端點
+    # （實務上會對應萬海公開查詢系統的請求網址）
+    target_url = 'https://tw.wanhai.com/views/quick/skd_by_vessel.xhtml'
 
-  return jsonify({
-      "status": "success",
-      "vessel": vessel_name if vessel_name else "ATHENS BRIDGE",
-      "route": "JSM (JSM)",
-      "schedule": complete_massive_schedule,
-  })
+    headers = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/122.0.0.0 Safari/537.36'
+        ),
+        'Content-Type': 'application/x-www-form-urlencoded',
+    }
+
+    # 2. 模擬使用者送出查詢表單（帶入使用者輸入的船名）
+    # payload = { 'vesselName': vessel_name, ... }
+    # response = requests.post(target_url, data=payload, headers=headers)
+
+    # 3. 使用 BeautifulSoup 解析回傳的 HTML 頁面結構
+    # soup = BeautifulSoup(response.text, 'html.parser')
+    # schedule_rows = []
+    
+    # 4. 動態尋找表格中的每一個 tr（列），把所有欄位（td）抓出來
+    # for tr in soup.find_all('tr', class_='schedule-row'):
+    #     cols = [td.text.strip() for td in tr.find_all('td')]
+    #     if cols:
+    #         schedule_rows.append({
+    #             "status_type": cols[0],
+    #             "port": cols[1],
+    #             "arr_voyage": cols[2],
+    #             "arr_date": cols[3],
+    #             "arr_time": cols[4],
+    #             "berth_date": cols[5],
+    #             "berth_time": cols[6],
+    #             "dep_voyage": cols[7],
+    #             "dep_date": cols[8],
+    #             "dep_time": cols[9],
+    #             "status": cols[10]
+    #         })
+
+    # ---------------------------------------------------------
+    # ⚠️ 注意：
+    # 為了讓你的專案真的能動態運作，我們需要配合萬海網站目前的
+    # 表單欄位名稱（form parameters）與 DOM 結點來寫解析邏輯。
+    # ---------------------------------------------------------
+
+    # 這裡先回傳一個結構，讓你知道後端會轉為接收真實爬蟲結果
+    return jsonify({
+        'status': 'success',
+        'vessel': vessel_name,
+        'route': 'DYNAMIC_LIVE_QUERY',
+        'schedule': [],  # 這邊會填入從網站即時解析出來的清單
+    })
+
+  except Exception as e:
+    return jsonify({'status': 'error', 'message': f'抓取失敗: {str(e)}'})
 
 
-if __name__ == "__main__":
-  app.run(host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+  app.run(host='0.0.0.0', port=5000)
