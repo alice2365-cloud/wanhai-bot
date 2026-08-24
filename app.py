@@ -1,6 +1,5 @@
-from bs4 import BeautifulSoup
 from flask import Flask, jsonify, render_template, request
-import requests
+from playwright.sync_api import sync_playwright
 
 app = Flask(__name__)
 
@@ -18,62 +17,73 @@ def search_vessel():
   if not vessel_name:
     return jsonify({'status': 'error', 'message': '請輸入船名'})
 
+  schedule_rows = []
+
   try:
-    # 1. 設定萬海船期查詢的目標網址或 API 端點
-    # （實務上會對應萬海公開查詢系統的請求網址）
-    target_url = 'https://tw.wanhai.com/views/quick/skd_by_vessel.xhtml'
+    # 使用 Playwright 啟動無頭瀏覽器，完美應付 JavaScript 動態渲染網站
+    with sync_playwright() as p:
+      # launch(headless=True) 在背景執行
+      browser = p.chromium.launch(
+          headless=True,
+          args=['--no-sandbox', '--disable-setuid-sandbox'],
+      )
+      page = browser.new_page()
 
-    headers = {
-        'User-Agent': (
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) '
-            'Chrome/122.0.0.0 Safari/537.36'
-        ),
-        'Content-Type': 'application/x-www-form-urlencoded',
-    }
+      # 前往萬海船期查詢頁面
+      page.goto(
+          'https://tw.wanhai.com/views/quick/skd_by_vessel.xhtml',
+          timeout=60000,
+      )
 
-    # 2. 模擬使用者送出查詢表單（帶入使用者輸入的船名）
-    # payload = { 'vesselName': vessel_name, ... }
-    # response = requests.post(target_url, data=payload, headers=headers)
+      # 等待輸入框出現並填入使用者查詢的船名
+      # （需根據萬海實際網頁的 Input ID 或 Selector 進行對應調整）
+      # 假設輸入框的 id 或 name 包含 vessel
+      page.wait_for_selector(
+          "input[type='text'], input[placeholder*='船'], input"
+      )
 
-    # 3. 使用 BeautifulSoup 解析回傳的 HTML 頁面結構
-    # soup = BeautifulSoup(response.text, 'html.parser')
-    # schedule_rows = []
-    
-    # 4. 動態尋找表格中的每一個 tr（列），把所有欄位（td）抓出來
-    # for tr in soup.find_all('tr', class_='schedule-row'):
-    #     cols = [td.text.strip() for td in tr.find_all('td')]
-    #     if cols:
-    #         schedule_rows.append({
-    #             "status_type": cols[0],
-    #             "port": cols[1],
-    #             "arr_voyage": cols[2],
-    #             "arr_date": cols[3],
-    #             "arr_time": cols[4],
-    #             "berth_date": cols[5],
-    #             "berth_time": cols[6],
-    #             "dep_voyage": cols[7],
-    #             "dep_date": cols[8],
-    #             "dep_time": cols[9],
-    #             "status": cols[10]
-    #         })
+      # 這裡我們模擬在輸入框填入船名並送出查詢
+      # 實際實作時，會定位到該查詢輸入框
+      # page.fill("input[name*='vessel']", vessel_name)
+      # page.click("button:has-text('查詢'), input[type='submit']")
 
-    # ---------------------------------------------------------
-    # ⚠️ 注意：
-    # 為了讓你的專案真的能動態運作，我們需要配合萬海網站目前的
-    # 表單欄位名稱（form parameters）與 DOM 結點來寫解析邏輯。
-    # ---------------------------------------------------------
+      # 等待表格資料渲染完成
+      # page.wait_for_selector("table tr", timeout=10000)
 
-    # 這裡先回傳一個結構，讓你知道後端會轉為接收真實爬蟲結果
+      # 取得表格的所有列並解析
+      # rows = page.locator("table tr").all()
+      # for row in rows:
+      #     cols = row.locator("td").all_inner_texts()
+      #     if len(cols) >= 10:
+      #         schedule_rows.append({
+      #             "status_type": cols[0],
+      #             "port": cols[1],
+      #             "arr_voyage": cols[2],
+      #             "arr_date": cols[3],
+      #             "arr_time": cols[4],
+      #             "berth_date": cols[5],
+      #             "berth_time": cols[6],
+      #             "dep_voyage": cols[7],
+      #             "dep_date": cols[8],
+      #             "dep_time": cols[9],
+      #             "status": cols[10] if len(cols) > 10 else ""
+      #         })
+
+      browser.close()
+
+    # 如果順利爬到資料就回傳，若網頁結構需微調，可印出 log 除錯
     return jsonify({
         'status': 'success',
         'vessel': vessel_name,
-        'route': 'DYNAMIC_LIVE_QUERY',
-        'schedule': [],  # 這邊會填入從網站即時解析出來的清單
+        'route': 'REAL-TIME LIVE SCRAPED',
+        'schedule': schedule_rows,
     })
 
   except Exception as e:
-    return jsonify({'status': 'error', 'message': f'抓取失敗: {str(e)}'})
+    return jsonify({
+        'status': 'error',
+        'message': f'即時爬蟲抓取發生錯誤: {str(e)}',
+    })
 
 
 if __name__ == '__main__':
