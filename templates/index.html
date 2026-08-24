@@ -1,0 +1,98 @@
+```html
+     <!DOCTYPE html>
+     <html lang="zh-TW">
+     <head>
+         <meta charset="UTF-8">
+         <title>萬海船期即時查詢系統</title>
+         <style>
+             body { font-family: sans-serif; background-color: #f4f6f9; margin: 0; padding: 40px; }
+             .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+             h2 { color: #003366; text-align: center; }
+             .search-box { display: flex; gap: 10px; margin-bottom: 30px; justify-content: center; }
+             input { padding: 10px; width: 60%; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+             button { padding: 10px 20px; font-size: 16px; background-color: #003366; color: white; border: none; border-radius: 4px; cursor: pointer; }
+             button:hover { background-color: #002244; }
+             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+             th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+             th { background-color: #003366; color: white; }
+             tr:nth-child(even) { background-color: #f9f9f9; }
+             .loading { text-align: center; color: #666; display: none; }
+         </style>
+     </head>
+     <body>
+
+     <div class="container">
+         <h2>萬海船舶動態查詢</h2>
+         <div class="search-box">
+             <input type="text" id="vesselInput" placeholder="請輸入船名 (例如: WAN HAI 512)...">
+             <button onclick="searchVessel()">查詢船期</button>
+         </div>
+
+         <div id="loading" class="loading">正在查詢中，請稍候...</div>
+
+         <div id="resultArea">
+             <table id="scheduleTable" style="display:none;">
+                 <thead>
+                     <tr>
+                         <th>停靠港口</th>
+                         <th>預計抵達 (ETA)</th>
+                         <th>預計離港 (ETD)</th>
+                         <th>航次 (Voyage)</th>
+                     </tr>
+                 </thead>
+                 <tbody id="tableBody">
+                     <!-- 動態插入資料 -->
+                 </tbody>
+             </table>
+         </div>
+     </div>
+
+     <script>
+     async function searchVessel() {
+         const vesselName = document.getElementById('vesselInput').value.trim();
+         if (!vesselName) {
+             alert('請輸入船名！');
+             return;
+         }
+
+         const loading = document.getElementById('loading');
+         const table = document.getElementById('scheduleTable');
+         const tbody = document.getElementById('tableBody');
+
+         loading.style.display = 'block';
+         table.style.display = 'none';
+         tbody.innerHTML = '';
+
+         try {
+             const response = await fetch('/api/search', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ vessel_name: vesselName })
+             });
+             
+             const data = await response.json();
+             
+             if (data.status === 'success') {
+                 data.schedule.forEach(item => {
+                     let row = `<tr>
+                         <td>${item.port}</td>
+                         <td>${item.eta}</td>
+                         <td>${item.etd}</td>
+                         <td>${item.voyage}</td>
+                     </tr>`;
+                     tbody.innerHTML += row;
+                 });
+                 table.style.display = 'table';
+             }
+         } catch (error) {
+             console.error('查詢失敗:', error);
+             alert('系統連線發生錯誤');
+         } finally {
+             loading.style.display = 'none';
+         }
+     }
+     </script>
+
+     </body>
+     </html>
+     ```
