@@ -1,98 +1,120 @@
-```html
-     <!DOCTYPE html>
-     <html lang="zh-TW">
-     <head>
-         <meta charset="UTF-8">
-         <title>萬海船期即時查詢系統</title>
-         <style>
-             body { font-family: sans-serif; background-color: #f4f6f9; margin: 0; padding: 40px; }
-             .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-             h2 { color: #003366; text-align: center; }
-             .search-box { display: flex; gap: 10px; margin-bottom: 30px; justify-content: center; }
-             input { padding: 10px; width: 60%; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
-             button { padding: 10px 20px; font-size: 16px; background-color: #003366; color: white; border: none; border-radius: 4px; cursor: pointer; }
-             button:hover { background-color: #002244; }
-             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-             th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-             th { background-color: #003366; color: white; }
-             tr:nth-child(even) { background-color: #f9f9f9; }
-             .loading { text-align: center; color: #666; display: none; }
-         </style>
-     </head>
-     <body>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>萬海船舶動態查詢系統 - 詳細船期</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { color: #003366; text-align: center; }
+        .search-box { display: flex; gap: 10px; margin-bottom: 25px; justify-content: center; }
+        input { padding: 10px; width: 50%; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 20px; font-size: 16px; background-color: #003366; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #002244; }
+        
+        .info-header { background-color: #e9ecef; padding: 10px 15px; font-weight: bold; margin-bottom: 15px; border-radius: 4px; color: #333; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #d6d8db; padding: 10px 8px; text-align: center; }
+        th { background-color: #e2e6ea; color: #333; font-weight: bold; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        .loading { text-align: center; color: #666; display: none; margin: 20px 0; }
+    </style>
+</head>
+<body>
 
-     <div class="container">
-         <h2>萬海船舶動態查詢</h2>
-         <div class="search-box">
-             <input type="text" id="vesselInput" placeholder="請輸入船名 (例如: WAN HAI 512)...">
-             <button onclick="searchVessel()">查詢船期</button>
-         </div>
+<div class="container">
+    <h2>萬海船舶動態查詢</h2>
+    <div class="search-box">
+        <input type="text" id="vesselInput" placeholder="請輸入船名 (例如: ATHENS BRIDGE)...">
+        <button onclick="searchVessel()">查詢船期</button>
+    </div>
 
-         <div id="loading" class="loading">正在查詢中，請稍候...</div>
+    <div id="loading" class="loading">正在向伺服器查詢詳細資料，請稍候...</div>
 
-         <div id="resultArea">
-             <table id="scheduleTable" style="display:none;">
-                 <thead>
-                     <tr>
-                         <th>停靠港口</th>
-                         <th>預計抵達 (ETA)</th>
-                         <th>預計離港 (ETD)</th>
-                         <th>航次 (Voyage)</th>
-                     </tr>
-                 </thead>
-                 <tbody id="tableBody">
-                     <!-- 動態插入資料 -->
-                 </tbody>
-             </table>
-         </div>
-     </div>
+    <div id="resultArea" style="display:none;">
+        <div class="info-header" id="vesselInfoTitle">船名 / 航線：-</div>
+        
+        <table id="scheduleTable">
+            <thead>
+                <tr>
+                    <th>狀態</th>
+                    <th>港口</th>
+                    <th>抵達航次</th>
+                    <th>預計抵港日</th>
+                    <th>時間</th>
+                    <th>預計靠泊日</th>
+                    <th>時間</th>
+                    <th>出發航次</th>
+                    <th>預計出發日</th>
+                    <th>時間</th>
+                    <th>狀態</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- 動態插入資料 -->
+            </tbody>
+        </table>
+    </div>
+</div>
 
-     <script>
-     async function searchVessel() {
-         const vesselName = document.getElementById('vesselInput').value.trim();
-         if (!vesselName) {
-             alert('請輸入船名！');
-             return;
-         }
+<script>
+async function searchVessel() {
+    const vesselName = document.getElementById('vesselInput').value.trim();
+    if (!vesselName) {
+        alert('請輸入船名！');
+        return;
+    }
 
-         const loading = document.getElementById('loading');
-         const table = document.getElementById('scheduleTable');
-         const tbody = document.getElementById('tableBody');
+    const loading = document.getElementById('loading');
+    const resultArea = document.getElementById('resultArea');
+    const tbody = document.getElementById('tableBody');
+    const titleDiv = document.getElementById('vesselInfoTitle');
 
-         loading.style.display = 'block';
-         table.style.display = 'none';
-         tbody.innerHTML = '';
+    loading.style.display = 'block';
+    resultArea.style.display = 'none';
+    tbody.innerHTML = '';
 
-         try {
-             const response = await fetch('/api/search', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ vessel_name: vesselName })
-             });
-             
-             const data = await response.json();
-             
-             if (data.status === 'success') {
-                 data.schedule.forEach(item => {
-                     let row = `<tr>
-                         <td>${item.port}</td>
-                         <td>${item.eta}</td>
-                         <td>${item.etd}</td>
-                         <td>${item.voyage}</td>
-                     </tr>`;
-                     tbody.innerHTML += row;
-                 });
-                 table.style.display = 'table';
-             }
-         } catch (error) {
-             console.error('查詢失敗:', error);
-             alert('系統連線發生錯誤');
-         } finally {
-             loading.style.display = 'none';
-         }
-     }
-     </script>
+    try {
+        const response = await fetch('/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vessel_name: vesselName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            titleDiv.innerText = `船名 / ${data.vessel}  航線 / ${data.route || 'JSM'}`;
+            
+            data.schedule.forEach(item => {
+                let row = `<tr>
+                    <td><b>${item.status_type || ''}</b></td>
+                    <td>${item.port}</td>
+                    <td>${item.arr_voyage}</td>
+                    <td>${item.arr_date}</td>
+                    <td>${item.arr_time}</td>
+                    <td>${item.berth_date}</td>
+                    <td>${item.berth_time}</td>
+                    <td>${item.dep_voyage}</td>
+                    <td>${item.dep_date}</td>
+                    <td>${item.dep_time}</td>
+                    <td>${item.status || 'ESTIMATED'}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+            resultArea.style.display = 'block';
+        } else {
+            alert('找不到該船的資料');
+        }
+    } catch (error) {
+        console.error('查詢失敗:', error);
+        alert('系統連線發生錯誤');
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+</script>
 
-     </body>
-     </html>
-     ```
+</body>
+</html>
